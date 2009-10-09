@@ -132,7 +132,7 @@ describe JSONStream do
       $close_connection = true
     end
     
-    it "should reconnect on application failure 0.25 at base" do
+    it "should reconnect on application failure 10 at base" do
       EM.run {
         EM.start_server Host, Port, JSONServer
         @stream = JSONStream.connect :host => Host, :port => Port
