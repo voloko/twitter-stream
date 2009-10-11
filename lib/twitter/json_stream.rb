@@ -76,7 +76,7 @@ module Twitter
 
     def receive_data data
       begin
-        @buffer.extract(data).each do |line| 
+        @buffer.extract(data).each do |line|
           receive_line(line)
         end
       rescue Exception => e
@@ -86,7 +86,7 @@ module Twitter
       end
     end
     
-    def post_init
+    def connection_completed
       reset_state
       send_request
     end
