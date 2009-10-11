@@ -186,6 +186,7 @@ module Twitter
       if ln =~ /\AHTTP\/1\.[01] ([\d]{3})/
         @code = $1.to_i
         @state = :headers
+        receive_error("invalid status code: #{@code}. #{ln}") unless @code == 200
       else
         receive_error('invalid response')
         close_connection
