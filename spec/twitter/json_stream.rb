@@ -30,7 +30,9 @@ describe JSONStream do
   Port = 9550
   
   class JSONServer < EM::Connection
+    attr_accessor :data
     def receive_data data
+      $recieved_data = data
       send_data $data_to_send
       EventMachine.next_tick {
         close_connection if $close_connection
@@ -41,6 +43,7 @@ describe JSONStream do
   context "on valid stream" do
     before :each do
       $data_to_send = read_fixture('twitter/basic_http.txt')
+      $recieved_data = ''
       $close_connection = false
     end
     
@@ -66,18 +69,21 @@ describe JSONStream do
     end
     
     it "should extract records" do
-      items = []
       EM.run {
         EM.start_server Host, Port, JSONServer
-        @stream = JSONStream.connect :host => Host, :port => Port
-        @stream.each_item do |item|
-          items << item
-        end
+        @stream = JSONStream.connect :host => Host, :port => Port, :user_agent => 'TEST_USER_AGENT'
         EM.add_timer(0.5){ EM.stop }
       }
-      items.should have(4).items
-      items[0][0,1].should == '{'
-      items[0][-1,1].should == '}'
+      $recieved_data.upcase.should include('USER-AGENT: TEST_USER_AGENT')
+    end
+    
+    it "should send correct user agent" do
+      EM.run {
+        $close_connection = true
+        EM.start_server Host, Port, JSONServer
+        @stream = JSONStream.connect :host => Host, :port => Port
+        EM.add_timer(0.5){ EM.stop }
+      }
     end
   end
   
@@ -123,6 +129,21 @@ describe JSONStream do
         @stream.should_not_receive(:reconnect_after)
         EM.add_timer(0.5){ EM.stop }
       }
+    end
+    
+    it "should notify after reconnect limit is reached" do
+      timeout, retries = nil, nil
+      EM.run {
+        EM.start_server Host, Port, JSONServer
+        @stream = JSONStream.connect :host => Host, :port => Port
+        @stream.on_max_reconnects do |t, r|
+          timeout, retries = t, r
+        end
+        @stream.reconnect_retries = 100
+        EM.add_timer(0.5){ EM.stop }
+      }
+      timeout.should == 0.25
+      retries.should == 101
     end
   end
   

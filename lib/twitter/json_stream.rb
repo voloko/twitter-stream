@@ -1,6 +1,5 @@
 require 'eventmachine'
 require 'em/buftok'
-require 'base64'
 
 module Twitter
   class JSONStream < EventMachine::Connection
@@ -26,7 +25,8 @@ module Twitter
       :path         => '/1/statuses/filter.json',
       :host         => 'stream.twitter.com',
       :port         => 80,
-      :auth         => 'test:test'
+      :auth         => 'test:test',
+      :user_agent   => 'TwitterStream',
     }
 
     attr_accessor :code
@@ -58,6 +58,10 @@ module Twitter
     
     def on_reconnect &block
       @reconnect_callback = block
+    end
+    
+    def on_max_reconnects &block
+      @max_reconnects_callback = block
     end
 
     def stop
@@ -91,11 +95,15 @@ module Twitter
     def schedule_reconnect
       timeout = reconnect_timeout
       @reconnect_retries += 1
-      reconnect_after(timeout) if timeout <= RECONNECT_MAX && @reconnect_retries <= RETRIES_MAX
+      if timeout <= RECONNECT_MAX && @reconnect_retries <= RETRIES_MAX
+        reconnect_after(timeout) 
+      else
+        @max_reconnects_callback.call(timeout, @reconnect_retries) if @max_reconnects_callback
+      end
     end
     
     def reconnect_after timeout
-      @reconnect_callback.call(timeout) if @reconnect_callback
+      @reconnect_callback.call(timeout, @reconnect_retries) if @reconnect_callback
       EventMachine.add_timer(timeout) do
         reconnect @options[:host], @options[:port]
       end
@@ -130,7 +138,7 @@ module Twitter
       data = []
       data << "#{@options[:method]} #{@options[:path]} HTTP/1.1"
       data << "Host: #{@options[:host]}"
-      data << "User-agent: ruby image client"
+      data << "User-agent: #{@options[:user_agent]}" if @options[:user_agent]
       data << "Authorization: Basic " + [@options[:auth]].pack('m').delete("\r\n")
       if @options[:method] == 'POST'
         data << "Content-type: #{@options[:content_type]}"
