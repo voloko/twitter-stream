@@ -20,7 +20,8 @@ Gem::Specification.new do |s|
      "fixtures/twitter/basic_http.txt",
      "lib/twitter/json_stream.rb",
      "spec/spec_helper.rb",
-     "spec/twitter/json_stream.rb"
+     "spec/twitter/json_stream.rb",
+     "twitter-stream.gemspec"
   ]
   s.homepage = %q{http://github.com/voloko/twitter-stream}
   s.rdoc_options = ["--charset=UTF-8"]
