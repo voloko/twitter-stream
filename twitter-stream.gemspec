@@ -13,7 +13,8 @@ Gem::Specification.new do |s|
     "README.markdown"
   ]
   s.files = [
-    "README.markdown",
+    ".gitignore",
+     "README.markdown",
      "Rakefile",
      "VERSION",
      "examples/reader.rb",
