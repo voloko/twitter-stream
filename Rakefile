@@ -17,6 +17,7 @@ begin
     gemspec.email = "voloko@gmail.com"
     gemspec.homepage = "http://github.com/voloko/twitter-stream"
     gemspec.authors = ["Vladimir Kolesnikov"]
+    gemspec.add_dependency("eventmachine", [">= 0.12.8"])
   end
 rescue LoadError
   puts "Jeweler not available. Install it with: sudo gem install technicalpickles-jeweler -s http://gems.github.com"
