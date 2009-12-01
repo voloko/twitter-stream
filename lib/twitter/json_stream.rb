@@ -175,7 +175,7 @@ module Twitter
     def parse_header_line ln
       ln.strip!
       if ln.empty?
-        reset_timeouts
+        reset_timeouts if @code == 200
         @state = :stream
       else
         headers << ln
