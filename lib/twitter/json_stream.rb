@@ -25,6 +25,7 @@ module Twitter
       :path         => '/1/statuses/filter.json',
       :host         => 'stream.twitter.com',
       :port         => 80,
+      :ssl          => false,
       :auth         => 'test:test',
       :user_agent   => 'TwitterStream',
     }
@@ -36,8 +37,12 @@ module Twitter
     attr_accessor :reconnect_retries
     
     def self.connect options = {}
+      options[:port] = 443 if options[:ssl] && !options.has_key?(:port)
       options = DEFAULT_OPTIONS.merge(options)
-      EventMachine.connect options[:host], options[:port], self, options
+
+      connection = EventMachine.connect options[:host], options[:port], self, options
+      connection.start_tls if options[:ssl]
+      connection
     end
 
     def initialize options = {}
