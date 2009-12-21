@@ -51,6 +51,7 @@ module Twitter
       @nf_last_reconnect = nil
       @af_last_reconnect = nil
       @reconnect_retries = 0
+      @immediate_reconnect = false
     end
 
     def each_item &block
@@ -71,6 +72,12 @@ module Twitter
 
     def stop
       @gracefully_closed = true
+      close_connection
+    end
+
+    def immediate_reconnect
+      @immediate_reconnect = true
+      @gracefully_closed = false
       close_connection
     end
     
@@ -109,12 +116,22 @@ module Twitter
     
     def reconnect_after timeout
       @reconnect_callback.call(timeout, @reconnect_retries) if @reconnect_callback
-      EventMachine.add_timer(timeout) do
+
+      if timeout == 0
         reconnect @options[:host], @options[:port]
+      else
+        EventMachine.add_timer(timeout) do
+          reconnect @options[:host], @options[:port]
+        end
       end
     end
     
     def reconnect_timeout
+      if @immediate_reconnect
+        @immediate_reconnect = false
+        return 0
+      end
+      
       if (@code == 0) # network failure
         if @nf_last_reconnect
           @nf_last_reconnect += NF_RECONNECT_ADD
