@@ -28,6 +28,7 @@ module Twitter
       :ssl          => false,
       :auth         => 'test:test',
       :user_agent   => 'TwitterStream',
+      :timeout      => 0
     }
 
     attr_accessor :code
@@ -150,6 +151,7 @@ module Twitter
     end
   
     def reset_state
+      set_comm_inactivity_timeout @options[:timeout] if @options[:timeout] > 0
       @code    = 0
       @headers = []
       @state   = :init

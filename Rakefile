@@ -7,6 +7,7 @@ Spec::Rake::SpecTask.new('spec') do |t|
   t.spec_files = FileList['spec/**/*.rb']
   t.spec_opts = %w(-fs --color)
 end
+task :default => :spec
 
 begin
   require 'jeweler'
