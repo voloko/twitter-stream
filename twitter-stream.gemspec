@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{twitter-stream}
-  s.version = "0.1.4"
+  s.version = "0.1.5"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Vladimir Kolesnikov"]
-  s.date = %q{2009-12-01}
+  s.date = %q{2010-02-24}
   s.description = %q{Simple Ruby client library for twitter streaming API. Uses EventMachine for connection handling. Adheres to twitter's reconnection guidline. JSON format only.}
   s.email = %q{voloko@gmail.com}
   s.extra_rdoc_files = [
