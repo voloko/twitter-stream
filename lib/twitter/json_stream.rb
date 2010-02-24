@@ -25,8 +25,10 @@ module Twitter
       :path         => '/1/statuses/filter.json',
       :host         => 'stream.twitter.com',
       :port         => 80,
+      :ssl          => false,
       :auth         => 'test:test',
       :user_agent   => 'TwitterStream',
+      :timeout      => 0
     }
 
     attr_accessor :code
@@ -36,8 +38,12 @@ module Twitter
     attr_accessor :reconnect_retries
     
     def self.connect options = {}
+      options[:port] = 443 if options[:ssl] && !options.has_key?(:port)
       options = DEFAULT_OPTIONS.merge(options)
-      EventMachine.connect options[:host], options[:port], self, options
+
+      connection = EventMachine.connect options[:host], options[:port], self, options
+      connection.start_tls if options[:ssl]
+      connection
     end
 
     def initialize options = {}
@@ -46,6 +52,7 @@ module Twitter
       @nf_last_reconnect = nil
       @af_last_reconnect = nil
       @reconnect_retries = 0
+      @immediate_reconnect = false
     end
 
     def each_item &block
@@ -66,6 +73,12 @@ module Twitter
 
     def stop
       @gracefully_closed = true
+      close_connection
+    end
+
+    def immediate_reconnect
+      @immediate_reconnect = true
+      @gracefully_closed = false
       close_connection
     end
     
@@ -104,12 +117,22 @@ module Twitter
     
     def reconnect_after timeout
       @reconnect_callback.call(timeout, @reconnect_retries) if @reconnect_callback
-      EventMachine.add_timer(timeout) do
+
+      if timeout == 0
         reconnect @options[:host], @options[:port]
+      else
+        EventMachine.add_timer(timeout) do
+          reconnect @options[:host], @options[:port]
+        end
       end
     end
     
     def reconnect_timeout
+      if @immediate_reconnect
+        @immediate_reconnect = false
+        return 0
+      end
+      
       if (@code == 0) # network failure
         if @nf_last_reconnect
           @nf_last_reconnect += NF_RECONNECT_ADD
@@ -128,6 +151,7 @@ module Twitter
     end
   
     def reset_state
+      set_comm_inactivity_timeout @options[:timeout] if @options[:timeout] > 0
       @code    = 0
       @headers = []
       @state   = :init
