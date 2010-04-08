@@ -93,7 +93,7 @@ module Twitter
           receive_line(line)
         end
       rescue Exception => e
-        receive_error(e.message)
+        receive_error("#{e.class}: " + [e.message, e.backtrace].flatten.join("\n\t"))
         close_connection
         return
       end
