@@ -1,5 +1,6 @@
 require 'eventmachine'
 require 'em/buftok'
+require 'uri'
 
 module Twitter
   class JSONStream < EventMachine::Connection
@@ -28,7 +29,8 @@ module Twitter
       :ssl          => false,
       :auth         => 'test:test',
       :user_agent   => 'TwitterStream',
-      :timeout      => 0
+      :timeout      => 0,
+      :proxy        => ENV['HTTP_PROXY']
     }
 
     attr_accessor :code
@@ -36,12 +38,22 @@ module Twitter
     attr_accessor :nf_last_reconnect
     attr_accessor :af_last_reconnect
     attr_accessor :reconnect_retries
+    attr_accessor :proxy
     
     def self.connect options = {}
       options[:port] = 443 if options[:ssl] && !options.has_key?(:port)
       options = DEFAULT_OPTIONS.merge(options)
 
-      connection = EventMachine.connect options[:host], options[:port], self, options
+      host = options[:host]
+      port = options[:port]
+
+      if options[:proxy]
+        proxy_uri = URI.parse(options[:proxy])
+        host = proxy_uri.host
+        port = proxy_uri.port
+      end
+      
+      connection = EventMachine.connect host, port, self, options
       connection.start_tls if options[:ssl]
       connection
     end
@@ -53,6 +65,7 @@ module Twitter
       @af_last_reconnect = nil
       @reconnect_retries = 0
       @immediate_reconnect = false
+      @proxy = URI.parse(options[:proxy]) if options[:proxy]
     end
 
     def each_item &block
@@ -160,10 +173,18 @@ module Twitter
 
     def send_request
       data = []
-      data << "#{@options[:method]} #{@options[:path]} HTTP/1.1"
+      request_uri = @options[:path]
+      if @proxy
+        # proxies need the request to be for the full url
+        request_uri = "http#{'s' if @options[:ssl]}://#{@options[:host]}:#{@options[:port]}#{request_uri}"
+      end
+      data << "#{@options[:method]} #{request_uri} HTTP/1.1"
       data << "Host: #{@options[:host]}"
       data << "User-agent: #{@options[:user_agent]}" if @options[:user_agent]
       data << "Authorization: Basic " + [@options[:auth]].pack('m').delete("\r\n")
+      if @proxy && @proxy.user
+        data << "Proxy-Authorization: Basic " + ["#{@proxy.user}:#{@proxy.password}"].pack('m').delete("\r\n")
+      end
       if @options[:method] == 'POST'
         data << "Content-type: #{@options[:content_type]}"
         data << "Content-length: #{@options[:content].length}"

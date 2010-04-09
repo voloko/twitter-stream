@@ -24,6 +24,16 @@ describe JSONStream do
       stream = JSONStream.connect {}
     end
     
+    it "should connect to the proxy if provided" do
+      EM.should_receive(:connect).with do |host, port, handler, opts|
+        host.should == 'my-proxy'
+        port.should == 8080
+        opts[:host].should == 'stream.twitter.com'
+        opts[:port].should == 80
+        opts[:proxy].should == 'http://my-proxy:8080'
+      end
+      stream = JSONStream.connect(:proxy => "http://my-proxy:8080") {}
+    end
   end
   
   Host = "127.0.0.1"
