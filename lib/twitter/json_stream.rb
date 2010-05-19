@@ -4,7 +4,7 @@ require 'uri'
 
 module Twitter
   class JSONStream < EventMachine::Connection
-    MAX_LINE_LENGTH = 16*1024
+    MAX_LINE_LENGTH = 1024*1024
     
     # network failure reconnections
     NF_RECONNECT_START = 0.25 
