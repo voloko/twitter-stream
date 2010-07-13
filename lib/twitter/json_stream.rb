@@ -1,6 +1,7 @@
 require 'eventmachine'
 require 'em/buftok'
 require 'uri'
+require 'roauth'
 
 module Twitter
   class JSONStream < EventMachine::Connection
@@ -27,10 +28,12 @@ module Twitter
       :host         => 'stream.twitter.com',
       :port         => 80,
       :ssl          => false,
-      :auth         => 'test:test',
       :user_agent   => 'TwitterStream',
       :timeout      => 0,
-      :proxy        => ENV['HTTP_PROXY']
+      :proxy        => ENV['HTTP_PROXY'],
+      :auth         => nil,
+      :oauth        => {},
+      :filters      => []
     }
 
     attr_accessor :code
@@ -177,23 +180,42 @@ module Twitter
     def send_request
       data = []
       request_uri = @options[:path]
+      
       if @proxy
         # proxies need the request to be for the full url
         request_uri = "http#{'s' if @options[:ssl]}://#{@options[:host]}:#{@options[:port]}#{request_uri}"
       end
+      
+      content = @options[:content]
+      
+      if !@options[:filters].empty?
+        if @options[:method].to_s.upcase == 'GET'
+          request_uri << "?#{filter_list}"
+        else
+          content = filter_list
+        end
+      end
+      
       data << "#{@options[:method]} #{request_uri} HTTP/1.1"
       data << "Host: #{@options[:host]}"
-      data << "User-agent: #{@options[:user_agent]}" if @options[:user_agent]
-      data << "Authorization: Basic " + [@options[:auth]].pack('m').delete("\r\n")
+      data << "User-Agent: #{@options[:user_agent]}" if @options[:user_agent]
+      
+      if @options[:auth]
+        data << "Authorization: Basic #{[@options[:auth]].pack('m').delete("\r\n")}"
+      elsif @options[:oauth]
+        data << "Authorization: #{oauth_header}"
+      end
+      
       if @proxy && @proxy.user
         data << "Proxy-Authorization: Basic " + ["#{@proxy.user}:#{@proxy.password}"].pack('m').delete("\r\n")
       end
       if @options[:method] == 'POST'
         data << "Content-type: #{@options[:content_type]}"
-        data << "Content-length: #{@options[:content].length}"
+        data << "Content-length: #{content.length}"
       end
       data << "\r\n"
-      send_data data.join("\r\n") + @options[:content]
+      
+      send_data data.join("\r\n") << content
     end
 
     def receive_line ln
@@ -244,6 +266,27 @@ module Twitter
     def reset_timeouts
       @nf_last_reconnect = @af_last_reconnect = nil
       @reconnect_retries = 0
+    end
+    
+    # :filters => %w(miama lebron jesus)
+    # :oauth => {
+    #   :consumer_key    => [key],
+    #   :consumer_secret => [token],
+    #   :access_key      => [access key],
+    #   :access_secret   => [access secret]
+    # }
+    def oauth_header
+      uri = "http://#{@options[:host]}#{@options[:path]}"
+      
+      params = {
+        'track' => @options[:filters].join(',')
+      }
+      
+      ::ROAuth.header(@options[:oauth], uri, params, @options[:method])
+    end
+    
+    def filter_list
+      "track=#{@options[:filters].join(',')}"
     end
 
   end  
