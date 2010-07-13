@@ -1,5 +1,6 @@
 require 'rubygems'
-gem 'rspec'
+
+gem 'rspec', '= 1.3.0'
 require 'spec/rake/spectask'
 
 desc "Run all specs"

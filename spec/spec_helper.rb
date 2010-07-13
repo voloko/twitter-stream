@@ -1,10 +1,11 @@
 require 'rubygems'
-lib_path = File.expand_path(File.join(File.dirname(__FILE__), '..', 'lib'))
-$LOAD_PATH.unshift lib_path unless $LOAD_PATH.include?(lib_path)
+$:.unshift File.expand_path("../../lib", __FILE__)
 
-gem 'rspec'
+gem 'rspec', '= 1.3.0'
 require 'spec'
 require 'spec/mocks'
+
+require 'twitter/json_stream'
 
 def fixture_path(path)
   File.join(File.dirname(__FILE__), '..', 'fixtures', path)
