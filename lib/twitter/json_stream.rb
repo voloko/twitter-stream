@@ -113,8 +113,11 @@ module Twitter
     end
     
     def connection_completed
-      reset_state
       send_request
+    end
+    
+    def post_init
+      reset_state
     end
     
   protected

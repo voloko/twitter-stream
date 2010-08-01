@@ -79,20 +79,8 @@ describe JSONStream do
       connect_stream
     end
   end
-  
-  context "on network failure" do
-    attr_reader :stream
-    before :each do
-      $data_to_send = ''
-      $close_connection = true
-    end
-    
-    it "should timeout on inactivity" do
-      connect_stream :stop_in => 1.5 do
-        stream.should_receive(:reconnect)        
-      end
-    end    
-    
+
+  shared_examples_for "network failure" do
     it "should reconnect on network failure" do
       connect_stream do
         stream.should_receive(:reconnect)
@@ -129,8 +117,40 @@ describe JSONStream do
       end
       timeout.should == 0.25
       retries.should == 101
-    end
+    end    
   end
+  
+  context "on network failure" do
+    attr_reader :stream
+    before :each do
+      $data_to_send = ''
+      $close_connection = true
+    end
+    
+    it "should timeout on inactivity" do
+      connect_stream :stop_in => 1.5 do
+        stream.should_receive(:reconnect)        
+      end
+    end    
+    
+    it_should_behave_like "network failure"
+  end
+  
+  context "on server unavailable" do
+    
+    attr_reader :stream
+    
+    # This is to make it so the network failure specs which call connect_stream  
+    # can be reused. This way calls to connect_stream won't actually create a 
+    # server to listen in.
+    def connect_stream_without_server(opts={},&block)
+      connect_stream_default(opts.merge(:start_server=>false),&block)
+    end
+    alias_method :connect_stream_default, :connect_stream
+    alias_method :connect_stream, :connect_stream_without_server
+    
+    it_should_behave_like "network failure"
+  end  
   
   context "on application failure" do
     attr_reader :stream
