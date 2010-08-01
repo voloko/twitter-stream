@@ -61,13 +61,13 @@ describe JSONStream do
     it "should parse headers" do
       connect_stream
       stream.code.should == 200
-      stream.headers[0].downcase.should include 'content-type'
+      stream.headers[0].downcase.should include('content-type')
     end
     
     it "should parse headers even after connection close" do
       connect_stream
       stream.code.should == 200
-      stream.headers[0].downcase.should include 'content-type'
+      stream.headers[0].downcase.should include('content-type')
     end
     
     it "should extract records" do
