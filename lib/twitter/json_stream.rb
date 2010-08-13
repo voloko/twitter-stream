@@ -183,7 +183,7 @@ module Twitter
 
       if @proxy
         # proxies need the request to be for the full url
-        request_uri = "http#{'s' if @options[:ssl]}://#{@options[:host]}:#{@options[:port]}#{request_uri}"
+        request_uri = "#{uri_base}:#{@options[:port]}#{request_uri}"
       end
 
       content = @options[:content]
@@ -269,6 +269,10 @@ module Twitter
       @reconnect_retries = 0
     end
 
+    #
+    # URL and request components
+    #
+
     # :filters => %w(miama lebron jesus)
     # :oauth => {
     #   :consumer_key    => [key],
@@ -277,8 +281,13 @@ module Twitter
     #   :access_secret   => [access secret]
     # }
     def oauth_header
-      uri = "http://#{@options[:host]}#{@options[:path]}"
+      uri = uri_base + @options[:path]
       ::ROAuth.header(@options[:oauth], uri, params, @options[:method])
+    end
+
+    # Scheme (https if ssl, http otherwise) and host part of URL
+    def uri_base
+      "http#{'s' if @options[:ssl]}://#{@options[:host]}"
     end
 
     # Normalized query hash of escaped string keys and escaped string values
