@@ -4,6 +4,22 @@ require 'twitter/json_stream'
 
 include Twitter
 
+Host = "127.0.0.1"
+Port = 9550
+
+class JSONServer < EM::Connection
+  attr_accessor :data
+  def receive_data data
+    $recieved_data = data
+    send_data $data_to_send
+    EventMachine.next_tick {
+      close_connection if $close_connection
+    }
+  end
+end
+
+
+
 describe JSONStream do
   
   context "on create" do
@@ -33,20 +49,6 @@ describe JSONStream do
         opts[:proxy].should == 'http://my-proxy:8080'
       end
       stream = JSONStream.connect(:proxy => "http://my-proxy:8080") {}
-    end
-  end
-  
-  Host = "127.0.0.1"
-  Port = 9550
-  
-  class JSONServer < EM::Connection
-    attr_accessor :data
-    def receive_data data
-      $recieved_data = data
-      send_data $data_to_send
-      EventMachine.next_tick {
-        close_connection if $close_connection
-      }
     end
   end
   

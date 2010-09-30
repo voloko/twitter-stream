@@ -189,11 +189,11 @@ module Twitter
 
       content = @options[:content]
 
-      unless query.blank?
+      unless q = query.empty?
         if @options[:method].to_s.upcase == 'GET'
-          request_uri << "?#{query}"
+          request_uri << "?#{q}"
         else
-          content = query
+          content = q
         end
       end
 
@@ -296,7 +296,7 @@ module Twitter
     def params
       flat = {}
       @options[:params].merge( :track => @options[:filters] ).each do |param, val|
-        next if val.blank?
+        next if val.empty?
         val = val.join(",") if val.respond_to?(:join)
         flat[escape(param)] = escape(val)
       end
