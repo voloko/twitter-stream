@@ -60,6 +60,16 @@ describe JSONStream do
       $close_connection = false
     end
     
+    it "should add no params" do
+      connect_stream
+      $recieved_data.should include('/1/statuses/filter.json HTTP')
+    end
+    
+    it "should add custom params" do
+      connect_stream :params => {:name => 'test'}
+      $recieved_data.should include('?name=test')
+    end
+    
     it "should parse headers" do
       connect_stream
       stream.code.should == 200
