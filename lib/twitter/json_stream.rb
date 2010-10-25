@@ -69,6 +69,7 @@ module Twitter
       @af_last_reconnect = nil
       @reconnect_retries = 0
       @immediate_reconnect = false
+      @on_inited_callback = options.delete(:on_inited)
       @proxy = URI.parse(options[:proxy]) if options[:proxy]
     end
 
@@ -122,6 +123,7 @@ module Twitter
 
     def post_init
       reset_state
+      @on_inited_callback.call if @on_inited_callback
     end
 
   protected
