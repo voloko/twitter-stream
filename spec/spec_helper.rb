@@ -1,9 +1,9 @@
 require 'rubygems'
 $:.unshift File.expand_path("../../lib", __FILE__)
 
-gem 'rspec', '= 1.3.0'
-require 'spec'
-require 'spec/mocks'
+gem 'rspec', '>= 2.5.0'
+require 'rspec'
+require 'rspec/mocks'
 
 require 'twitter/json_stream'
 

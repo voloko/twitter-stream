@@ -1,12 +1,12 @@
 require 'rubygems'
 
-gem 'rspec', '= 1.3.0'
-require 'spec/rake/spectask'
+gem 'rspec', '>= 2.5.0'
+require 'rspec/core/rake_task'
 
 desc "Run all specs"
-Spec::Rake::SpecTask.new('spec') do |t|
-  t.spec_files = FileList['spec/**/*.rb']
-  t.spec_opts = %w(-fs --color)
+RSpec::Core::RakeTask.new(:spec) do |t|
+  # t.spec_files = FileList['spec/**/*.rb']
+  t.rspec_opts = %w(-fs --color)
 end
 task :default => :spec
 
