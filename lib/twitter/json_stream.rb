@@ -286,6 +286,9 @@ module Twitter
     def oauth_header
       uri = uri_base + @options[:path]
 
+      # The hash SimpleOAuth accepts is slightly different from that of
+      # ROAuth.  To preserve backward compatability, fix the cache here
+      # so that the arguments passed in don't need to change.
       oauth = {
         :consumer_key => @options[:oauth][:consumer_key],
         :consumer_secret => @options[:oauth][:consumer_secret],
