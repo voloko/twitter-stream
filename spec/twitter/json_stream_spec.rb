@@ -22,7 +22,7 @@ end
 
 describe JSONStream do
 
-  context "authentiation" do
+  context "authentication" do
     it "should connect with basic auth credentials" do
       connect_stream :auth => "username:password"
       $recieved_data.should include('Authorization: Basic')
