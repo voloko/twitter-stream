@@ -284,7 +284,7 @@ module Twitter
     #   :access_secret   => [access secret]
     # }
     def oauth_header
-      uri = uri_base + @options[:path]
+      uri = uri_base + @options[:path].to_s
 
       # The hash SimpleOAuth accepts is slightly different from that of
       # ROAuth.  To preserve backward compatability, fix the cache here
