@@ -1,7 +1,7 @@
 require 'eventmachine'
 require 'em/buftok'
 require 'uri'
-require 'roauth'
+require 'simple_oauth'
 
 module Twitter
   class JSONStream < EventMachine::Connection
@@ -284,8 +284,19 @@ module Twitter
     #   :access_secret   => [access secret]
     # }
     def oauth_header
-      uri = uri_base + @options[:path]
-      ::ROAuth.header(@options[:oauth], uri, params, @options[:method])
+      uri = uri_base + @options[:path].to_s
+
+      # The hash SimpleOAuth accepts is slightly different from that of
+      # ROAuth.  To preserve backward compatability, fix the cache here
+      # so that the arguments passed in don't need to change.
+      oauth = {
+        :consumer_key => @options[:oauth][:consumer_key],
+        :consumer_secret => @options[:oauth][:consumer_secret],
+        :token => @options[:oauth][:access_key],
+        :token_secret => @options[:oauth][:access_secret]
+      }
+
+      SimpleOAuth::Header.new(@options[:method], uri, params, oauth)
     end
 
     # Scheme (https if ssl, http otherwise) and host part of URL

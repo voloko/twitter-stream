@@ -1,2 +1,9 @@
-.rake_tasks~
-/pkg
+*.sw?
+.DS_Store
+coverage
+rdoc
+pkg
+Gemfile.lock
+coverage/*
+.yardoc/*
+doc/*
