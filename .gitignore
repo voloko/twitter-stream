@@ -1,4 +1,5 @@
 *.sw?
+.rake_tasks~
 .DS_Store
 coverage
 rdoc
