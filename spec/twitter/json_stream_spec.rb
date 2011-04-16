@@ -74,7 +74,9 @@ describe JSONStream do
   context "on valid stream" do
     attr_reader :stream
     before :each do
-      $data_to_send = read_fixture('twitter/basic_http.txt')
+      $body = File.readlines(fixture_path("twitter/tweets.txt"))
+      $body.each {|tweet| tweet.strip!; tweet << "\r" }
+      $data_to_send = http_response(200,"OK",{},$body)
       $recieved_data = ''
       $close_connection = false
     end
@@ -92,13 +94,13 @@ describe JSONStream do
     it "should parse headers" do
       connect_stream
       stream.code.should == 200
-      stream.headers[0].downcase.should include('content-type')
+      stream.headers.keys.map{|k| k.downcase}.should include('content-type')
     end
 
     it "should parse headers even after connection close" do
       connect_stream
       stream.code.should == 200
-      stream.headers[0].downcase.should include('content-type')
+      stream.headers.keys.map{|k| k.downcase}.should include('content-type')
     end
 
     it "should extract records" do
@@ -109,6 +111,21 @@ describe JSONStream do
     it 'should allow custom headers' do
       connect_stream :headers => { 'From' => 'twitter-stream' }
       $recieved_data.upcase.should include('FROM: TWITTER-STREAM')
+    end
+
+    it "should deliver each item" do
+      items = []
+      connect_stream do
+        stream.each_item do |item|
+          items << item
+        end
+      end
+      # Extract only the tweets from the fixture
+      tweets = $body.map{|l| l.strip }.select{|l| l =~ /^\{/ }
+      items.size.should == tweets.size
+      tweets.each_with_index do |tweet,i|
+        items[i].should == tweet
+      end
     end
 
     it "should send correct user agent" do
@@ -233,4 +250,41 @@ describe JSONStream do
       end
     end
   end
+
+  context "on stream with chunked transfer encoding" do
+    attr_reader :stream
+    before :each do
+      $recieved_data = ''
+      $close_connection = false
+    end
+
+    it "should ignore empty lines" do
+      body_chunks = ["{\"screen"+"_name\"",":\"user1\"}\r\r\r{","\"id\":9876}\r\r"]
+      $data_to_send = http_response(200,"OK",{},body_chunks)
+      items = []
+      connect_stream do
+        stream.each_item do |item|
+          items << item
+        end
+      end
+      items.size.should == 2
+      items[0].should == '{"screen_name":"user1"}'
+      items[1].should == '{"id":9876}'
+    end
+
+    it "should parse full entities even if split" do
+      body_chunks = ["{\"id\"",":1234}\r{","\"id\":9876}"]
+      $data_to_send = http_response(200,"OK",{},body_chunks)
+      items = []
+      connect_stream do
+        stream.each_item do |item|
+          items << item
+        end
+      end
+      items.size.should == 2
+      items[0].should == '{"id":1234}'
+      items[1].should == '{"id":9876}'
+    end
+  end
+
 end
