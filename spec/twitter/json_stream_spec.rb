@@ -123,6 +123,12 @@ describe JSONStream do
       end
     end
 
+    it "should not reconnect on network failure when not configured to auto reconnect" do
+      connect_stream(:auto_reconnect => false) do
+        stream.should_receive(:reconnect).never
+      end
+    end
+
     it "should reconnect with 0.25 at base" do
       connect_stream do
         stream.should_receive(:reconnect_after).with(0.25)
@@ -169,6 +175,12 @@ describe JSONStream do
       end
     end
 
+    it "should not reconnect on inactivity when not configured to auto reconnect" do
+      connect_stream(:stop_in => 1.5, :auto_reconnect => false) do
+        stream.should_receive(:reconnect).never
+      end
+    end
+
     it_should_behave_like "network failure"
   end
 
@@ -191,13 +203,19 @@ describe JSONStream do
   context "on application failure" do
     attr_reader :stream
     before :each do
-      $data_to_send = 'HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="Firehose"\r\n\r\n1'
-      $close_connection = true
+      $data_to_send = "HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"Firehose\"\r\n\r\n"
+      $close_connection = false
     end
 
     it "should reconnect on application failure 10 at base" do
       connect_stream do
         stream.should_receive(:reconnect_after).with(10)
+      end
+    end
+
+    it "should not reconnect on application failure 10 at base when not configured to auto reconnect" do
+      connect_stream(:auto_reconnect => false) do
+        stream.should_receive(:reconnect_after).never
       end
     end
 
