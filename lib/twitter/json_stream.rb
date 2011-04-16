@@ -309,7 +309,7 @@ module Twitter
     def params
       flat = {}
       @options[:params].merge( :track => @options[:filters] ).each do |param, val|
-        next if val.empty?
+        next if val.to_s.empty?
         val = val.join(",") if val.respond_to?(:join)
         flat[escape(param)] = escape(val)
       end
