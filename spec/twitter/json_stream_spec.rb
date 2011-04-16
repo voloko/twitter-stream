@@ -106,6 +106,11 @@ describe JSONStream do
       $recieved_data.upcase.should include('USER-AGENT: TEST_USER_AGENT')
     end
 
+    it 'should allow custom headers' do
+      connect_stream :headers => { 'From' => 'twitter-stream' }
+      $recieved_data.upcase.should include('FROM: TWITTER-STREAM')
+    end
+
     it "should send correct user agent" do
       connect_stream
     end

@@ -31,6 +31,7 @@ module Twitter
       :user_agent   => 'TwitterStream',
       :timeout      => 0,
       :proxy        => ENV['HTTP_PROXY'],
+      :headers      => {},
       :auth         => nil,
       :oauth        => {},
       :filters      => [],
@@ -217,6 +218,13 @@ module Twitter
         data << "Content-type: #{@options[:content_type]}"
         data << "Content-length: #{content.length}"
       end
+
+      if @options[:headers]
+        @options[:headers].each do |name,value|
+            data << "#{name}: #{value}"
+        end
+      end
+
       data << "\r\n"
 
       send_data data.join("\r\n") << content
