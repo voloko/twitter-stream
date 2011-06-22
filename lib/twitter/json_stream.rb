@@ -326,13 +326,13 @@ module Twitter
       @options[:params].merge( :track => @options[:filters] ).each do |param, val|
         next if val.to_s.empty? || (val.respond_to?(:empty?) && val.empty?)
         val = val.join(",") if val.respond_to?(:join)
-        flat[escape(param)] = escape(val)
+        flat[param.to_s] = val.to_s
       end
       flat
     end
 
     def query
-      params.map{|pair| pair.join("=")}.sort.join("&")
+      params.map{|param, value| [escape(param), escape(value)].join("=")}.sort.join("&")
     end
 
     def escape str
