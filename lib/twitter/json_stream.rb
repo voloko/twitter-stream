@@ -2,6 +2,7 @@ require 'eventmachine'
 require 'em/buftok'
 require 'uri'
 require 'simple_oauth'
+require 'http/parser'
 
 module Twitter
   class JSONStream < EventMachine::Connection
@@ -20,21 +21,22 @@ module Twitter
     RETRIES_MAX     = 10
 
     DEFAULT_OPTIONS = {
-      :method       => 'GET',
-      :path         => '/',
-      :content_type => "application/x-www-form-urlencoded",
-      :content      => '',
-      :path         => '/1/statuses/filter.json',
-      :host         => 'stream.twitter.com',
-      :port         => 80,
-      :ssl          => false,
-      :user_agent   => 'TwitterStream',
-      :timeout      => 0,
-      :proxy        => ENV['HTTP_PROXY'],
-      :auth         => nil,
-      :oauth        => {},
-      :filters      => [],
-      :params       => {},
+      :method         => 'GET',
+      :path           => '/',
+      :content_type   => "application/x-www-form-urlencoded",
+      :content        => '',
+      :path           => '/1/statuses/filter.json',
+      :host           => 'stream.twitter.com',
+      :port           => 80,
+      :ssl            => false,
+      :user_agent     => 'TwitterStream',
+      :timeout        => 0,
+      :proxy          => ENV['HTTP_PROXY'],
+      :auth           => nil,
+      :oauth          => {},
+      :filters        => [],
+      :params         => {},
+      :auto_reconnect => true
     }
 
     attr_accessor :code
@@ -89,6 +91,10 @@ module Twitter
       @max_reconnects_callback = block
     end
 
+    def on_close &block
+      @close_callback = block
+    end
+
     def stop
       @gracefully_closed = true
       close_connection
@@ -101,20 +107,18 @@ module Twitter
     end
 
     def unbind
-      receive_line(@buffer.flush) unless @buffer.empty?
-      schedule_reconnect unless @gracefully_closed
+      if @state == :stream && !@buffer.empty?
+        parse_stream_line(@buffer.flush)
+      end
+      schedule_reconnect if @options[:auto_reconnect] && !@gracefully_closed
+      @close_callback.call if @close_callback
+
     end
 
-    def receive_data data
-      begin
-        @buffer.extract(data).each do |line|
-          receive_line(line)
-        end
-      rescue Exception => e
-        receive_error("#{e.class}: " + [e.message, e.backtrace].flatten.join("\n\t"))
-        close_connection
-        return
-      end
+    # Receives raw data from the HTTP connection and pushes it into the
+    # HTTP parser which then drives subsequent callbacks.
+    def receive_data(data)
+      @parser << data
     end
 
     def connection_completed
@@ -175,9 +179,40 @@ module Twitter
     def reset_state
       set_comm_inactivity_timeout @options[:timeout] if @options[:timeout] > 0
       @code    = 0
-      @headers = []
+      @headers = {}
       @state   = :init
       @buffer  = BufferedTokenizer.new("\r", MAX_LINE_LENGTH)
+      @stream  = ''
+
+      @parser  = Http::Parser.new
+      @parser.on_headers_complete = method(:handle_headers_complete)
+      @parser.on_body = method(:receive_stream_data)
+    end
+
+    # Called when the status line and all headers have been read from the
+    # stream.
+    def handle_headers_complete(headers)
+      @code = @parser.status_code.to_i
+      if @code != 200
+        receive_error("invalid status code: #{@code}.")
+      end
+      self.headers = headers
+      @state = :stream
+    end
+
+    # Called every time a chunk of data is read from the connection once it has
+    # been opened and after the headers have been processed.
+    def receive_stream_data(data)
+      begin
+        @buffer.extract(data).each do |line|
+          parse_stream_line(line)
+        end
+        @stream  = ''
+      rescue Exception => e
+        receive_error("#{e.class}: " + [e.message, e.backtrace].flatten.join("\n\t"))
+        close_connection
+        return
+      end
     end
 
     def send_request
@@ -217,20 +252,16 @@ module Twitter
         data << "Content-type: #{@options[:content_type]}"
         data << "Content-length: #{content.length}"
       end
+
+      if @options[:headers]
+        @options[:headers].each do |name,value|
+            data << "#{name}: #{value}"
+        end
+      end
+
       data << "\r\n"
 
       send_data data.join("\r\n") << content
-    end
-
-    def receive_line ln
-      case @state
-      when :init
-        parse_response_line ln
-      when :headers
-        parse_header_line ln
-      when :stream
-        parse_stream_line ln
-      end
     end
 
     def receive_error e
@@ -240,34 +271,18 @@ module Twitter
     def parse_stream_line ln
       ln.strip!
       unless ln.empty?
-        if ln[0,1] == '{'
-          @each_item_callback.call(ln) if @each_item_callback
+        if ln[0,1] == '{' || ln[ln.length-1,1] == '}'
+          @stream << ln
+          if @stream[0,1] == '{' && @stream[@stream.length-1,1] == '}'
+            @each_item_callback.call(@stream) if @each_item_callback
+            @stream = ''
+          end
         end
       end
     end
 
-    def parse_header_line ln
-      ln.strip!
-      if ln.empty?
-        reset_timeouts if @code == 200
-        @state = :stream
-      else
-        headers << ln
-      end
-    end
-
-    def parse_response_line ln
-      if ln =~ /\AHTTP\/1\.[01] ([\d]{3})/
-        @code = $1.to_i
-        @state = :headers
-        receive_error("invalid status code: #{@code}. #{ln}") unless @code == 200
-      else
-        receive_error('invalid response')
-        close_connection
-      end
-    end
-
     def reset_timeouts
+      set_comm_inactivity_timeout @options[:timeout] if @options[:timeout] > 0
       @nf_last_reconnect = @af_last_reconnect = nil
       @reconnect_retries = 0
     end
@@ -309,7 +324,7 @@ module Twitter
     def params
       flat = {}
       @options[:params].merge( :track => @options[:filters] ).each do |param, val|
-        next if val.empty?
+        next if val.to_s.empty? || (val.respond_to?(:empty?) && val.empty?)
         val = val.join(",") if val.respond_to?(:join)
         flat[escape(param)] = escape(val)
       end

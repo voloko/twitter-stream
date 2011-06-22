@@ -19,8 +19,9 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--charset=UTF-8"]
   s.extra_rdoc_files = ["README.markdown"]
 
-  s.add_runtime_dependency('eventmachine', "~> 0.12.8")
+  s.add_runtime_dependency('eventmachine', ">= 0.12.8")
   s.add_runtime_dependency('simple_oauth', '~> 0.1.4')
+  s.add_runtime_dependency('http_parser.rb', '~> 0.5.1')
   s.add_development_dependency('rspec', "~> 2.5.0")
 
   s.files         = `git ls-files`.split("\n")

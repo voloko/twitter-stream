@@ -74,7 +74,9 @@ describe JSONStream do
   context "on valid stream" do
     attr_reader :stream
     before :each do
-      $data_to_send = read_fixture('twitter/basic_http.txt')
+      $body = File.readlines(fixture_path("twitter/tweets.txt"))
+      $body.each {|tweet| tweet.strip!; tweet << "\r" }
+      $data_to_send = http_response(200,"OK",{},$body)
       $recieved_data = ''
       $close_connection = false
     end
@@ -92,18 +94,38 @@ describe JSONStream do
     it "should parse headers" do
       connect_stream
       stream.code.should == 200
-      stream.headers[0].downcase.should include('content-type')
+      stream.headers.keys.map{|k| k.downcase}.should include('content-type')
     end
 
     it "should parse headers even after connection close" do
       connect_stream
       stream.code.should == 200
-      stream.headers[0].downcase.should include('content-type')
+      stream.headers.keys.map{|k| k.downcase}.should include('content-type')
     end
 
     it "should extract records" do
       connect_stream :user_agent => 'TEST_USER_AGENT'
       $recieved_data.upcase.should include('USER-AGENT: TEST_USER_AGENT')
+    end
+
+    it 'should allow custom headers' do
+      connect_stream :headers => { 'From' => 'twitter-stream' }
+      $recieved_data.upcase.should include('FROM: TWITTER-STREAM')
+    end
+
+    it "should deliver each item" do
+      items = []
+      connect_stream do
+        stream.each_item do |item|
+          items << item
+        end
+      end
+      # Extract only the tweets from the fixture
+      tweets = $body.map{|l| l.strip }.select{|l| l =~ /^\{/ }
+      items.size.should == tweets.size
+      tweets.each_with_index do |tweet,i|
+        items[i].should == tweet
+      end
     end
 
     it "should send correct user agent" do
@@ -115,6 +137,12 @@ describe JSONStream do
     it "should reconnect on network failure" do
       connect_stream do
         stream.should_receive(:reconnect)
+      end
+    end
+
+    it "should not reconnect on network failure when not configured to auto reconnect" do
+      connect_stream(:auto_reconnect => false) do
+        stream.should_receive(:reconnect).never
       end
     end
 
@@ -164,6 +192,12 @@ describe JSONStream do
       end
     end
 
+    it "should not reconnect on inactivity when not configured to auto reconnect" do
+      connect_stream(:stop_in => 1.5, :auto_reconnect => false) do
+        stream.should_receive(:reconnect).never
+      end
+    end
+
     it_should_behave_like "network failure"
   end
 
@@ -186,13 +220,19 @@ describe JSONStream do
   context "on application failure" do
     attr_reader :stream
     before :each do
-      $data_to_send = 'HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="Firehose"\r\n\r\n1'
-      $close_connection = true
+      $data_to_send = "HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm=\"Firehose\"\r\n\r\n"
+      $close_connection = false
     end
 
     it "should reconnect on application failure 10 at base" do
       connect_stream do
         stream.should_receive(:reconnect_after).with(10)
+      end
+    end
+
+    it "should not reconnect on application failure 10 at base when not configured to auto reconnect" do
+      connect_stream(:auto_reconnect => false) do
+        stream.should_receive(:reconnect_after).never
       end
     end
 
@@ -210,4 +250,41 @@ describe JSONStream do
       end
     end
   end
+
+  context "on stream with chunked transfer encoding" do
+    attr_reader :stream
+    before :each do
+      $recieved_data = ''
+      $close_connection = false
+    end
+
+    it "should ignore empty lines" do
+      body_chunks = ["{\"screen"+"_name\"",":\"user1\"}\r\r\r{","\"id\":9876}\r\r"]
+      $data_to_send = http_response(200,"OK",{},body_chunks)
+      items = []
+      connect_stream do
+        stream.each_item do |item|
+          items << item
+        end
+      end
+      items.size.should == 2
+      items[0].should == '{"screen_name":"user1"}'
+      items[1].should == '{"id":9876}'
+    end
+
+    it "should parse full entities even if split" do
+      body_chunks = ["{\"id\"",":1234}\r{","\"id\":9876}"]
+      $data_to_send = http_response(200,"OK",{},body_chunks)
+      items = []
+      connect_stream do
+        stream.each_item do |item|
+          items << item
+        end
+      end
+      items.size.should == 2
+      items[0].should == '{"id":1234}'
+      items[1].should == '{"id":9876}'
+    end
+  end
+
 end
