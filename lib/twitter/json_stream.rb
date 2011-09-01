@@ -248,7 +248,7 @@ module Twitter
       if @proxy && @proxy.user
         data << "Proxy-Authorization: Basic " + ["#{@proxy.user}:#{@proxy.password}"].pack('m').delete("\r\n")
       end
-      if @options[:method] == 'POST'
+      if ['POST', 'PUT'].include?(@options[:method])
         data << "Content-type: #{@options[:content_type]}"
         data << "Content-length: #{content.length}"
       end
@@ -311,7 +311,9 @@ module Twitter
         :token_secret => @options[:oauth][:access_secret]
       }
 
-      SimpleOAuth::Header.new(@options[:method], uri, params, oauth)
+      data = ['POST', 'PUT'].include?(@options[:method]) ? params : {}
+
+      SimpleOAuth::Header.new(@options[:method], uri, data, oauth)
     end
 
     # Scheme (https if ssl, http otherwise) and host part of URL
