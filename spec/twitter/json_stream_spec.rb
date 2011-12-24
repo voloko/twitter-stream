@@ -1,5 +1,4 @@
-$:.unshift "."
-require File.dirname(__FILE__) + '/../spec_helper.rb'
+require 'spec_helper.rb'
 require 'twitter/json_stream'
 
 include Twitter
