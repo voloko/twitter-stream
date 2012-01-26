@@ -60,7 +60,6 @@ module Twitter
       end
 
       connection = EventMachine.connect host, port, self, options
-      connection.start_tls if options[:ssl]
       connection
     end
 
@@ -122,6 +121,7 @@ module Twitter
     end
 
     def connection_completed
+      start_tls if @options[:ssl]
       send_request
     end
 
