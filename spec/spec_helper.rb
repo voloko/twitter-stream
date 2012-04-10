@@ -1,5 +1,4 @@
 require 'rubygems'
-$:.unshift File.expand_path("../../lib", __FILE__)
 
 gem 'rspec', '>= 2.5.0'
 require 'rspec'
