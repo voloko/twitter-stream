@@ -68,6 +68,13 @@ describe JSONStream do
       stream = JSONStream.connect(:proxy => "http://my-proxy:8080") {}
     end
 
+    it "should not trigger SSL until connection is established" do
+      connection = stub('connection')
+      EM.should_receive(:connect).and_return(connection)
+      stream = JSONStream.connect(:ssl => true)
+      stream.should == connection
+    end
+
   end
 
   context "on valid stream" do
@@ -194,6 +201,12 @@ describe JSONStream do
     it "should not reconnect on inactivity when not configured to auto reconnect" do
       connect_stream(:stop_in => 1.5, :auto_reconnect => false) do
         stream.should_receive(:reconnect).never
+      end
+    end
+
+    it "should reconnect with SSL if enabled" do
+      connect_stream :ssl => true do
+        stream.should_receive(:start_tls).twice
       end
     end
 
