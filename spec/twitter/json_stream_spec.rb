@@ -134,6 +134,23 @@ describe JSONStream do
       end
     end
 
+    it "should swallow StandardError exceptions when delivering items" do
+      expect do
+        connect_stream :ssl => false do
+          stream.each_item { |item| raise StandardError, 'error message' }
+        end
+      end.to_not raise_error
+    end
+
+
+    it "propagates out runtime errors when delivering items" do
+      expect do
+        connect_stream :ssl => false do
+          stream.each_item { |item| raise Exception, 'error message' }
+        end
+      end.to raise_error(Exception, 'error message')
+    end
+
     it "should send correct user agent" do
       connect_stream
     end
