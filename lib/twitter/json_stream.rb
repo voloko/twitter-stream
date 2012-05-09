@@ -208,7 +208,7 @@ module Twitter
           parse_stream_line(line)
         end
         @stream  = ''
-      rescue Exception => e
+      rescue => e
         receive_error("#{e.class}: " + [e.message, e.backtrace].flatten.join("\n\t"))
         close_connection
         return
