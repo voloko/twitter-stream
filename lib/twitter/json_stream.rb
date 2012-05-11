@@ -90,6 +90,8 @@ module Twitter
       @reconnect_callback = block
     end
 
+    # Called when no data has been received for NO_DATA_TIMEOUT seconds.
+    # Reconnecting is probably in order as per the Twitter recommendations
     def on_no_data &block
       @no_data_callback = block
     end

@@ -32,6 +32,11 @@ JSON format only.
       stream.on_max_reconnects do |timeout, retries|
         # Something is wrong on your side. Send yourself an email.
       end
+
+      stream.on_no_data do
+        # Twitter has stopped sending any data on the currently active
+        # connection, reconnecting is probably in order
+      end
     }
 
 
