@@ -24,7 +24,6 @@ module Twitter
 
     DEFAULT_OPTIONS = {
       :method         => 'GET',
-      :path           => '/',
       :content_type   => "application/x-www-form-urlencoded",
       :content        => '',
       :path           => '/1/statuses/filter.json',
